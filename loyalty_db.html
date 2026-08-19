@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#6f4e37">
+<title>Кофейня — База клиентов и лояльность</title>
+<style>
+  :root{
+    --cream:#f6efe2;
+    --beige:#efe3cc;
+    --caramel:#d8a657;
+    --caramel-dark:#c98a3a;
+    --brown:#6f4e37;
+    --brown-dark:#4a3526;
+    --espresso:#3b2a1c;
+    --green:#5c8a3a;
+    --green-dark:#3f6326;
+    --red:#b5482a;
+    --soft-white:#fffdf8;
+    --shadow:0 4px 16px rgba(74,53,38,.12);
+    --radius:14px;
+    --tap:46px;          /* мин. высота сенсорной кнопки */
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    background:var(--cream);
+    color:var(--espresso);
+    line-height:1.45;
+    padding:12px;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));
+    -webkit-text-size-adjust:100%;
+  }
+
+  /* ===== Шапка ===== */
+  header{
+    background:linear-gradient(135deg,var(--brown),var(--caramel));
+    color:var(--soft-white);
+    border-radius:var(--radius);
+    padding:14px 16px;
+    box-shadow:var(--shadow);
+    display:flex;flex-direction:column;gap:10px;
+  }
+  header .top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  header h1{margin:0;font-size:1.18rem;font-weight:700;letter-spacing:.3px;line-height:1.2;}
+  header .sub{font-size:.72rem;opacity:.9;margin-top:2px;}
+  .stats{display:flex;gap:8px;}
+  .stat{
+    background:rgba(255,255,255,.16);
+    border-radius:10px;padding:6px 8px;flex:1 1 0;min-width:0;text-align:center;
+  }
+  .stat .num{font-size:1.12rem;font-weight:700;line-height:1.1;}
+  .stat .lbl{font-size:.62rem;text-transform:uppercase;letter-spacing:.4px;opacity:.9;}
+
+  /* ===== Раскладка ===== */
+  .layout{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px;align-items:start;}
+
+  .card{
+    background:var(--soft-white);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:14px;
+    border:1px solid var(--beige);
+  }
+  .card h2{margin:0 0 12px;font-size:1.05rem;color:var(--brown-dark);display:flex;align-items:center;gap:8px;}
+  .card .hint{font-size:.74rem;color:#8a7560;margin-top:-8px;margin-bottom:10px;}
+
+  /* ===== Переключатель формы (мобайл) ===== */
+  .form-toggle{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    border:1px dashed var(--caramel);background:var(--cream);color:var(--caramel-dark);
+    border-radius:12px;padding:13px 14px;font-size:.95rem;font-weight:700;cursor:pointer;
+    margin-bottom:12px;
+  }
+  .form-toggle .chev{transition:transform .2s;font-size:1.1rem;}
+  .form-toggle[aria-expanded="true"] .chev{transform:rotate(180deg);}
+  .form-body{display:none;}
+  .form-body.open{display:block;}
+
+  /* ===== Поля ===== */
+  label{display:block;font-size:.76rem;font-weight:600;color:var(--brown-dark);margin:9px 0 4px;}
+  input,select{
+    width:100%;padding:11px 12px;border:1px solid #d9c8ad;border-radius:11px;font-size:1rem;
+    background:var(--cream);color:var(--espresso);transition:border .15s,box-shadow .15s;
+    min-height:var(--tap);
+  }
+  input:focus,select:focus{outline:none;border-color:var(--caramel);box-shadow:0 0 0 3px rgba(216,166,87,.25);}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .inline-btn{
+    background:var(--cream);border:1px dashed var(--caramel);color:var(--caramel-dark);
+    border-radius:11px;padding:11px 8px;font-size:.8rem;font-weight:600;cursor:pointer;margin-top:6px;
+    min-height:var(--tap);
+  }
+
+  /* ===== Кнопки ===== */
+  button{cursor:pointer;font-family:inherit;}
+  .btn{
+    border:none;border-radius:12px;padding:12px 14px;font-size:.95rem;font-weight:600;color:var(--soft-white);
+    background:var(--brown);transition:background .15s,transform .05s;min-height:var(--tap);
+  }
+  .btn:hover{background:var(--brown-dark);}
+  .btn:active{transform:translateY(1px);}
+  .btn.caramel{background:var(--caramel);}
+  .btn.caramel:hover{background:var(--caramel-dark);}
+  .btn.green{background:var(--green);}
+  .btn.green:hover{background:var(--green-dark);}
+  .btn.red{background:var(--red);}
+  .btn.red:hover{background:#9a3a20;}
+  .btn.outline{background:transparent;color:var(--brown-dark);border:1px solid #d9c8ad;}
+  .btn.outline:hover{background:var(--beige);}
+  .btn.sm{padding:0 6px;font-size:.82rem;min-height:38px;min-width:40px;}
+  .btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .btn-row > .btn{flex:1 1 auto;}
+
+  /* ===== Тулбар поиска ===== */
+  .toolbar{
+    position:sticky;top:0;z-index:20;
+    display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-14px -14px 12px;
+    padding:10px 14px;background:var(--soft-white);
+    border-bottom:1px solid var(--beige);border-radius:var(--radius) var(--radius) 0 0;
+  }
+  .toolbar input{flex:1 1 160px;max-width:none;}
+  .toolbar select{flex:1 1 140px;max-width:none;}
+  .toolbar .clear-btn{flex:0 0 auto;}
+
+  /* ===== Список клиентов: таблица -> карточки на мобайле ===== */
+  .table-wrap{border-radius:12px;border:1px solid var(--beige);overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;}
+  thead th{
+    background:var(--brown);color:var(--soft-white);text-align:left;padding:11px 12px;font-weight:600;
+    font-size:.78rem;letter-spacing:.3px;
+  }
+  tbody td{padding:11px 12px;border-top:1px solid var(--beige);vertical-align:middle;}
+  tbody tr:nth-child(even){background:#fbf6ec;}
+  .client-name{font-weight:700;color:var(--brown-dark);}
+  .phone{font-variant-numeric:tabular-nums;}
+  .card-num{font-family:'Consolas','Courier New',monospace;font-weight:700;color:var(--caramel-dark);}
+  .stamp-box{
+    display:inline-flex;align-items:center;justify-content:center;min-width:42px;
+    background:var(--cream);border:1px solid var(--caramel);border-radius:8px;padding:3px 7px;
+    font-weight:700;color:var(--brown-dark);
+  }
+  .actions{display:flex;gap:5px;flex-wrap:wrap;}
+  .progress{height:7px;background:#e7d8c0;border-radius:6px;overflow:hidden;margin-top:4px;min-width:80px;}
+  .progress > span{display:block;height:100%;background:var(--caramel);}
+
+  .badge{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:20px;font-weight:700;letter-spacing:.3px;}
+  .badge.ready{background:#e7f0d8;color:var(--green-dark);}
+  .badge.given{background:#e8e0d0;color:var(--brown-dark);}
+  .badge.active{background:#fde9d4;color:var(--caramel-dark);}
+
+  /* ===== Модалки ===== */
+  .modal-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(40,28,18,.5);backdrop-filter:blur(2px);
+    z-index:50;align-items:flex-end;justify-content:center;padding:0;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal{
+    background:var(--soft-white);border-radius:18px 18px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.3);
+    width:100%;max-width:560px;max-height:92vh;overflow-y:auto;padding:18px 16px;
+    padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));
+    animation:slideUp .22s ease-out;
+  }
+  @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .modal h2{margin-top:0;color:var(--brown-dark);font-size:1.1rem;}
+  .modal .close-x{float:right;cursor:pointer;color:#9a8a74;font-size:1.4rem;border:none;background:none;min-width:44px;min-height:44px;line-height:1;}
+
+  .history{max-height:260px;overflow-y:auto;border:1px solid var(--beige);border-radius:10px;margin-top:6px;}
+  .history-item{padding:9px 12px;border-bottom:1px solid var(--beige);font-size:.84rem;}
+  .history-item:last-child{border-bottom:none;}
+  .history-item .when{color:#9a8a74;font-size:.72rem;display:block;margin-top:2px;}
+  .history-item .what{font-weight:600;color:var(--brown-dark);}
+
+  .toast{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    background:var(--espresso);color:var(--soft-white);padding:12px 20px;border-radius:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:.9rem;z-index:100;opacity:0;transition:opacity .25s;pointer-events:none;
+    max-width:90vw;text-align:center;
+  }
+  .toast.show{opacity:1;}
+  .toast.err{background:var(--red);}
+
+  .empty{text-align:center;padding:36px 20px;color:#9a8a74;}
+  .footer-note{font-size:.74rem;color:#9a8a74;margin-top:14px;text-align:center;}
+
+  /* ============ ДЕСКТОП ============ */
+  @media (min-width:760px){
+    body{padding:20px;}
+    header{flex-direction:row;align-items:center;justify-content:space-between;padding:18px 22px;}
+    header h1{font-size:1.5rem;}
+    header .sub{font-size:.85rem;}
+    .stat{min-width:96px;padding:8px 12px;}
+    .stat .num{font-size:1.3rem;}
+    .stat .lbl{font-size:.72rem;}
+    .layout{grid-template-columns:340px 1fr;gap:18px;}
+    .card{padding:18px;}
+    .form-toggle{display:none;}
+    .form-body{display:block !important;}
+    .toolbar{position:static;margin:0 0 14px;padding:0;background:transparent;border:none;border-radius:0;}
+    .toolbar input{max-width:260px;}
+    .toolbar select{max-width:180px;}
+    .table-wrap{overflow-x:auto;}
+    table{min-width:820px;}
+    thead th{position:sticky;top:0;}
+    tbody tr:hover{background:#f3e7d2;}
+    tr.bonus-ready:hover{background:#e6efd3 !important;}
+    .modal-backdrop{align-items:center;padding:18px;}
+    .modal{border-radius:var(--radius);box-shadow:0 12px 40px rgba(0,0,0,.3);max-height:88vh;padding:22px;}
+  }
+
+  /* ============ МОБАЙЛ: карточки вместо таблицы ============ */
+  @media (max-width:759px){
+    .table-wrap{border:none;background:transparent;box-shadow:none;overflow:visible;}
+    table,thead,tbody,th,td,tr{display:block;}
+    thead{display:none;}
+    tbody tr{
+      background:var(--soft-white);border:1px solid var(--beige);border-radius:14px;
+      margin-bottom:12px;padding:6px 8px;box-shadow:var(--shadow);position:relative;
+    }
+    tbody tr:nth-child(even){background:var(--soft-white);}
+    tbody td{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:9px 6px;border:none;border-bottom:1px solid var(--beige);
+    }
+    tbody td:last-child{border-bottom:none;}
+    /* подпись слева для данных-ячеек */
+    tbody td[data-label]::before{
+      content:attr(data-label);font-weight:600;color:var(--brown-dark);font-size:.74rem;opacity:.85;
+    }
+    /* ячейка с клиентом — крупный заголовок во всю ширину */
+    tbody td.cell-name{flex-direction:column;align-items:flex-start;gap:2px;padding-top:11px;}
+    tbody td.cell-name::before{display:none;}
+    tbody td.cell-name .client-name{font-size:1.05rem;}
+    /* ячейка действий — кнопки в сетку */
+    tbody td.cell-actions{flex-direction:column;align-items:stretch;gap:8px;padding-top:4px;}
+    tbody td.cell-actions::before{display:none;}
+    tbody td.cell-actions .actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+    tbody td.cell-actions .actions .btn.sm{min-height:40px;}
+    /* штампы — крупнее */
+    .stamp-box{min-width:54px;padding:4px 10px;font-size:1rem;}
+    .progress{min-width:120px;}
+    tr.bonus-ready{background:#eef4e0 !important;border-color:#cfe39a;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top">
+    <div>
+      <h1>☕ Кофейня — Лояльность</h1>
+      <div class="sub">Офлайн-база клиентов и карт · localStorage + JSON</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="num" id="statClients">0</div><div class="lbl">Клиентов</div></div>
+    <div class="stat"><div class="num" id="statReady">0</div><div class="lbl">Бонус готов</div></div>
+    <div class="stat"><div class="num" id="statStamps">0</div><div class="lbl">Штампов</div></div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- ЛЕВАЯ ПАНЕЛЬ -->
+  <div>
+    <button class="form-toggle" id="formToggle" aria-expanded="false">
+      <span>➕ Добавить / изменить клиента</span>
+      <span class="chev">▾</span>
+    </button>
+    <div class="form-body card" id="formBody">
+      <h2 id="formTitle">➕ Новый клиент</h2>
+      <div class="hint">Все поля сохраняются локально в этом браузере.</div>
+      <input type="hidden" id="editId">
+
+      <label>Имя *</label>
+      <input type="text" id="firstName" placeholder="Анна" autocomplete="off">
+
+      <label>Фамилия</label>
+      <input type="text" id="lastName" placeholder="Смирнова" autocomplete="off">
+
+      <div class="row">
+        <div>
+          <label>Телефон *</label>
+          <input type="tel" id="phone" placeholder="+7 900 123-45-67" autocomplete="off">
+        </div>
+        <div>
+          <label>Номер карты</label>
+          <input type="text" id="cardNumber" placeholder="CC-0001" autocomplete="off">
+          <button type="button" class="inline-btn" id="genCardBtn" style="width:100%;">⚙ Авто-генерация</button>
+        </div>
+      </div>
+
+      <label>Схема лояльности</label>
+      <select id="scheme">
+        <option value="stamp6">6 штампов → бесплатный кофе</option>
+        <option value="stamp8">8 штампов → бесплатный кофе</option>
+        <option value="stamp10">10 штампов → бесплатный кофе</option>
+        <option value="points100">100 баллов → бонус</option>
+        <option value="points200">200 баллов → бонус</option>
+        <option value="custom">Свои лимиты (ниже)</option>
+      </select>
+
+      <div class="row3" style="margin-top:8px;">
+        <div>
+          <label>Штампов/баллов</label>
+          <input type="number" id="stamps" value="0" min="0" inputmode="numeric">
+        </div>
+        <div>
+          <label>Лимит до бонуса</label>
+          <input type="number" id="limit" value="6" min="1" inputmode="numeric">
+        </div>
+        <div>
+          <label>Бонус выдан?</label>
+          <select id="bonusGiven">
+            <option value="0">Нет</option>
+            <option value="1">Да</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn caramel" id="saveBtn">💾 Сохранить</button>
+        <button class="btn outline" id="resetBtn">✖ Очистить</button>
+      </div>
+
+      <hr style="margin:16px 0;border:none;border-top:1px dashed var(--beige);">
+
+      <h2 style="font-size:1rem;">🗄 Резервная копия</h2>
+      <div class="btn-row">
+        <button class="btn green sm" id="exportBtn">⬇ Экспорт JSON</button>
+        <button class="btn outline sm" id="importBtn">⬆ Импорт JSON</button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none;">
+      </div>
+      <div class="hint" style="margin-top:12px;">Файл резервной копии: <code>loyalty_backup.json</code></div>
+    </div>
+  </div>
+
+  <!-- ПРАВАЯ ПАНЕЛЬ -->
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="🔍 Поиск по базе...">
+      <select id="sortBy">
+        <option value="created">Новые сверху</option>
+        <option value="createdAsc">Старые сверху</option>
+        <option value="name">По имени (А-Я)</option>
+        <option value="stamps">По штампам</option>
+        <option value="ready">Бонус готов</option>
+      </select>
+      <button class="btn red sm clear-btn" id="clearAllBtn">🗑 Очистить</button>
+    </div>
+    <div style="padding:0 14px 14px;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Клиент</th>
+              <th>Телефон</th>
+              <th>Карта</th>
+              <th>Схема</th>
+              <th>Штампы</th>
+              <th>До бонуса</th>
+              <th>Бонус</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="footer-note">Данные хранятся только в этом браузере. Делайте экспорт JSON регулярно.</div>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛКА ИСТОРИИ -->
+<div class="modal-backdrop" id="historyModal">
+  <div class="modal">
+    <span class="close-x" id="closeHistory">✕</span>
+    <h2>📜 История отметок</h2>
+    <div id="historyClientName" style="font-weight:700;color:var(--caramel-dark);margin-bottom:4px;"></div>
+    <div id="historyClientInfo" style="font-size:.84rem;color:#8a7560;margin-bottom:8px;"></div>
+    <div class="history" id="historyList"></div>
+    <div class="btn-row">
+      <button class="btn outline" id="closeHistoryBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛКА УДАЛЕНИЯ -->
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal">
+    <span class="close-x" id="closeDelete">✕</span>
+    <h2>🗑 Удалить клиента?</h2>
+    <p id="deleteText" style="font-size:.92rem;"></p>
+    <div class="btn-row">
+      <button class="btn red" id="confirmDeleteBtn">Удалить</button>
+      <button class="btn outline" id="cancelDeleteBtn">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+const STORAGE_KEY = "coffeeLoyaltyDB_v1";
+let db = [];
+let deleteTargetId = null;
+
+/* ---------- Утилиты ---------- */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function nowTS(){
+  const d = new Date();
+  return d.toLocaleString("ru-RU", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+function pad(n){ return String(n).padStart(4,"0"); }
+function nextCardNumber(){
+  let max = 0;
+  db.forEach(c=>{
+    const m = (c.cardNumber||"").match(/CC-(\d+)/i);
+    if(m){ const v = parseInt(m[1],10); if(v>max) max=v; }
+  });
+  return "CC-" + pad(max+1);
+}
+function normalizePhone(p){ return (p||"").replace(/\D/g,""); }
+function schemeLabel(s){ return ({
+  stamp6:"6 штампов → кофе", stamp8:"8 штампов → кофе", stamp10:"10 штампов → кофе",
+  points100:"100 баллов", points200:"200 баллов", custom:"Свой лимит"
+})[s] || "Свой лимит";
+}
+function applySchemeDefaults(scheme){
+  const map = {stamp6:6,stamp8:8,stamp10:10,points100:100,points200:200};
+  return map[scheme] || 6;
+}
+function isPointScheme(scheme){ return scheme && scheme.startsWith("points"); }
+
+/* ---------- Сохранение/загрузка ---------- */
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ db = JSON.parse(raw); }
+  }catch(e){ db = []; }
+  if(!Array.isArray(db)) db = [];
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+}
+
+/* ---------- Toast ---------- */
+let toastTimer = null;
+function toast(msg, isErr){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (isErr?" err":"");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.className = "toast"; }, 2600);
+}
+
+/* ---------- Поиск дублей ---------- */
+function findByPhone(phone){
+  const n = normalizePhone(phone);
+  return db.find(c => normalizePhone(c.phone) === n && n !== "");
+}
+function findByCard(cardNumber){
+  const v = (cardNumber||"").trim().toLowerCase();
+  return db.find(c => (c.cardNumber||"").trim().toLowerCase() === v && v !== "");
+}
+
+/* ---------- Рендер таблицы ---------- */
+function render(){
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const sort = document.getElementById("sortBy").value;
+
+  let rows = db.slice();
+
+  if(q){
+    rows = rows.filter(c=>{
+      const hay = ((c.firstName||"")+" "+(c.lastName||"")+" "+(c.phone||"")+" "+(c.cardNumber||"")).toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  rows.sort((a,b)=>{
+    switch(sort){
+      case "name": return ((a.lastName||"")+(a.firstName||"")).localeCompare((b.lastName||"")+(b.firstName||""));
+      case "createdAsc": return a.created - b.created;
+      case "stamps": return b.stamps - a.stamps;
+      case "ready": return (b.stamps>=b.limit?1:0) - (a.stamps>=a.limit?1:0);
+      default: return b.created - a.created;
+    }
+  });
+
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  if(rows.length === 0){
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">Клиентов не найдено. Добавьте нового клиента выше.</td></tr>';
+  }else{
+    rows.forEach(c=>{
+      const tr = document.createElement("tr");
+      const ready = c.stamps >= c.limit;
+      if(ready) tr.className = "bonus-ready";
+      const remaining = Math.max(0, c.limit - c.stamps);
+      const pct = Math.min(100, Math.round((c.stamps/c.limit)*100));
+      const pointWord = isPointScheme(c.scheme)?"балл":"штамп";
+
+      tr.innerHTML = `
+        <td class="cell-name" data-label="Клиент">
+          <span class="client-name">${esc(c.lastName? c.lastName+" "+(c.firstName||"") : c.firstName||"")}</span>
+          ${c.created? '<span class="when" style="font-size:.72rem;color:#9a8a74;">'+new Date(c.created).toLocaleDateString("ru-RU")+'</span>':''}
+        </td>
+        <td class="phone" data-label="Телефон">${esc(c.phone||"—")}</td>
+        <td data-label="Карта"><span class="card-num">${esc(c.cardNumber||"—")}</span></td>
+        <td data-label="Схема">${esc(schemeLabel(c.scheme))}<div class="hint" style="margin:2px 0 0;font-size:.7rem;">лимит: ${c.limit}</div></td>
+        <td data-label="${pointWord.charAt(0).toUpperCase()+pointWord.slice(1)}ы">
+          <span class="stamp-box">${c.stamps}</span>
+          <div class="progress"><span style="width:${pct}%;"></span></div>
+        </td>
+        <td data-label="До бонуса">${ready? '<span style="color:var(--green-dark);font-weight:700;">Готов!</span>' : 'осталось '+remaining}</td>
+        <td data-label="Бонус">${c.bonusGiven? '<span class="badge given">выдан</span>' : (ready? '<span class="badge ready">доступен</span>':'<span class="badge active">активна</span>')}</td>
+        <td class="cell-actions" data-label="Действия">
+          <div class="actions">
+            <button class="btn green sm" data-act="plus" data-id="${c.id}" title="+1 ${pointWord}">＋</button>
+            <button class="btn caramel sm" data-act="minus" data-id="${c.id}" title="-1 ${pointWord}">－</button>
+            <button class="btn sm" data-act="bonus" data-id="${c.id}" title="Выдать бонус" ${c.bonusGiven?'disabled style="opacity:.4;"':''}>🎁</button>
+            <button class="btn outline sm" data-act="edit" data-id="${c.id}" title="Редактировать">✎</button>
+            <button class="btn red sm" data-act="history" data-id="${c.id}" title="История">📜</button>
+            <button class="btn red sm" data-act="del" data-id="${c.id}" title="Удалить">🗑</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById("statClients").textContent = db.length;
+  document.getElementById("statReady").textContent = db.filter(c=>c.stamps>=c.limit && !c.bonusGiven).length;
+  document.getElementById("statStamps").textContent = db.reduce((s,c)=>s+(+c.stamps||0),0);
+}
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
+
+/* ---------- Действия по карте ---------- */
+function addStamp(id){
+  const c = db.find(x=>x.id===id); if(!c) return;
+  const word = isPointScheme(c.scheme)?"балл":"штамп";
+  if(c.stamps >= c.limit && !c.bonusGiven){
+    const ok = confirm(
+      "⚠ У клиента уже доступен бонус ("+c.stamps+"/"+c.limit+").\n"+
+      "Рекомендуется сначала выдать бонус (кнопка 🎁).\n\n"+
+      "Всё равно добавить ещё "+word+"?"
+    );
+    if(!ok){ toast("Добавление отменено — бонус доступен", true); return; }
+  }
+  if(c.bonusGiven){ c.bonusGiven = 0; }
+  c.stamps = (+c.stamps||0) + 1;
+  c.history = c.history||[];
+  c.history.push({ts:nowTS(), action:"+1 "+word+" (итого: "+c.stamps+")"});
+  save(); render(); toast(word.charAt(0).toUpperCase()+word.slice(1)+" добавлен");
+}
+function removeStamp(id){
+  const c = db.find(x=>x.id===id); if(!c) return;
+  if(c.stamps>0){
+    c.stamps -= 1;
+    c.history = c.history||[];
+    c.history.push({ts:nowTS(), action:"-1 "+(isPointScheme(c.scheme)?"балл":"штамп")+" (итого: "+c.stamps+")"});
+    save(); render(); toast((isPointScheme(c.scheme)?"Балл":"Штамп")+" снят");
+  }else{ toast("Штампов уже 0", true); }
+}
+function markBonus(id){
+  const c = db.find(x=>x.id===id); if(!c) return;
+  if(c.stamps < c.limit){ toast("Недостаточно штампов для бонуса", true); return; }
+  c.bonusGiven = 1;
+  c.stamps = 0;
+  c.history = c.history||[];
+  c.history.push({ts:nowTS(), action:"🎁 Бонус выдан. Счётчик обнулён, начат новый цикл (лимит "+c.limit+")"});
+  save(); render(); toast("Бонус отмечен как выданный. Новый цикл начат.");
+}
+
+/* ---------- Форма ---------- */
+function clearForm(){
+  document.getElementById("formTitle").textContent = "➕ Новый клиент";
+  document.getElementById("editId").value = "";
+  ["firstName","lastName","phone","cardNumber"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("scheme").value = "stamp6";
+  document.getElementById("stamps").value = "0";
+  document.getElementById("limit").value = "6";
+  document.getElementById("bonusGiven").value = "0";
+  document.getElementById("cardNumber").value = nextCardNumber();
+}
+function fillForm(c){
+  document.getElementById("formTitle").textContent = "✎ Редактирование клиента";
+  document.getElementById("editId").value = c.id;
+  document.getElementById("firstName").value = c.firstName||"";
+  document.getElementById("lastName").value = c.lastName||"";
+  document.getElementById("phone").value = c.phone||"";
+  document.getElementById("cardNumber").value = c.cardNumber||"";
+  document.getElementById("scheme").value = c.scheme||"stamp6";
+  document.getElementById("stamps").value = c.stamps||0;
+  document.getElementById("limit").value = c.limit||6;
+  document.getElementById("bonusGiven").value = c.bonusGiven? "1":"0";
+  // на мобайле открыть форму, чтобы видеть поля при редактировании
+  const body=document.getElementById("formBody");
+  body.classList.add("open");
+  document.getElementById("formToggle").setAttribute("aria-expanded","true");
+  body.scrollIntoView({behavior:"smooth", block:"start"});
+}
+function saveClient(){
+  const id = document.getElementById("editId").value;
+  const firstName = document.getElementById("firstName").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  let cardNumber = document.getElementById("cardNumber").value.trim();
+  const scheme = document.getElementById("scheme").value;
+  let stamps = parseInt(document.getElementById("stamps").value,10); if(isNaN(stamps)||stamps<0) stamps=0;
+  let limit = parseInt(document.getElementById("limit").value,10); if(isNaN(limit)||limit<1) limit=applySchemeDefaults(scheme);
+  const bonusGiven = document.getElementById("bonusGiven").value === "1" ? 1 : 0;
+
+  if(!firstName){ toast("Введите имя клиента", true); return; }
+  if(!phone){ toast("Введите телефон клиента", true); return; }
+  if(!cardNumber){ cardNumber = nextCardNumber(); }
+
+  const dupPhone = findByPhone(phone);
+  if(dupPhone && dupPhone.id !== id){ toast("Клиент с таким телефоном уже есть: "+(dupPhone.firstName||"")+" "+(dupPhone.lastName||""), true); return; }
+  const dupCard = findByCard(cardNumber);
+  if(dupCard && dupCard.id !== id){ toast("Карта с таким номером уже есть: "+dupCard.cardNumber, true); return; }
+
+  if(id){
+    const c = db.find(x=>x.id===id);
+    if(!c){ toast("Клиент не найден", true); return; }
+    const oldStamps = c.stamps;
+    Object.assign(c, {firstName, lastName:document.getElementById("lastName").value.trim(), phone, cardNumber, scheme, stamps, limit, bonusGiven});
+    c.history = c.history||[];
+    if(oldStamps !== stamps){
+      c.history.push({ts:nowTS(), action:"Редактирование: штампы "+oldStamps+" → "+stamps});
+    }else{
+      c.history.push({ts:nowTS(), action:"Данные клиента отредактированы"});
+    }
+    toast("Клиент обновлён");
+  }else{
+    const c = {
+      id: uid(), firstName,
+      lastName: document.getElementById("lastName").value.trim(),
+      phone, cardNumber, scheme, stamps, limit, bonusGiven,
+      created: Date.now(), history:[{ts:nowTS(), action:"Клиент добавлен в базу"}]
+    };
+    db.push(c);
+    toast("Клиент добавлен: "+cardNumber);
+  }
+  save(); clearForm(); render();
+}
+
+/* ---------- Модалки ---------- */
+function openHistory(id){
+  const c = db.find(x=>x.id===id); if(!c) return;
+  document.getElementById("historyClientName").textContent = (c.lastName? c.lastName+" ":"")+(c.firstName||"");
+  document.getElementById("historyClientInfo").textContent = "Карта: "+(c.cardNumber||"—")+" · Тел: "+(c.phone||"—")+" · "+schemeLabel(c.scheme)+" · сейчас штампов: "+c.stamps+"/"+c.limit;
+  const list = document.getElementById("historyList");
+  const hist = (c.history||[]).slice().reverse();
+  if(hist.length===0){ list.innerHTML = '<div class="history-item" style="color:#9a8a74;">История пуста</div>'; }
+  else{
+    list.innerHTML = hist.map(h=>`<div class="history-item"><span class="what">${esc(h.action)}</span><span class="when">${esc(h.ts)}</span></div>`).join("");
+  }
+  document.getElementById("historyModal").classList.add("show");
+}
+function openDelete(id){
+  const c = db.find(x=>x.id===id); if(!c) return;
+  deleteTargetId = id;
+  document.getElementById("deleteText").textContent = "Удалить клиента "+(c.lastName?c.lastName+" ":"")+(c.firstName||"")+" (карта "+(c.cardNumber||"—")+")? Действие необратимо.";
+  document.getElementById("deleteModal").classList.add("show");
+}
+function confirmDelete(){
+  if(!deleteTargetId) return;
+  const c = db.find(x=>x.id===deleteTargetId);
+  if(c){
+    db = db.filter(x=>x.id!==deleteTargetId);
+    save(); render(); toast("Клиент удалён");
+  }
+  deleteTargetId = null;
+  document.getElementById("deleteModal").classList.remove("show");
+}
+
+/* ---------- Экспорт/Импорт ---------- */
+function exportJSON(){
+  if(db.length===0){ toast("База пуста", true); return; }
+  const data = JSON.stringify({exportedAt:new Date().toISOString(), count:db.length, clients:db}, null, 2);
+  const blob = new Blob([data], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "loyalty_backup.json"; a.click();
+  URL.revokeObjectURL(url);
+  toast("Экспорт выполнен: "+db.length+" клиентов");
+}
+function importJSON(file){
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const obj = JSON.parse(e.target.result);
+      let clients = Array.isArray(obj)? obj : obj.clients;
+      if(!Array.isArray(clients)) throw new Error("Неверный формат");
+      clients = clients.filter(c=>c && c.firstName && c.phone);
+      if(confirm("Импортировать "+clients.length+" клиентов? Текущие данные будут заменены.")){
+        db = clients.map(c=>{
+          if(!c.id) c.id = uid();
+          if(!c.history) c.history=[];
+          if(c.created==null) c.created = Date.now();
+          return c;
+        });
+        save(); render(); clearForm();
+        toast("Импортировано: "+db.length+" клиентов");
+      }
+    }catch(err){ toast("Ошибка чтения JSON: "+err.message, true); }
+  };
+  reader.onerror = ()=>toast("Не удалось прочитать файл", true);
+  reader.readAsText(file);
+}
+
+/* ---------- События ---------- */
+document.getElementById("saveBtn").addEventListener("click", saveClient);
+document.getElementById("resetBtn").addEventListener("click", clearForm);
+document.getElementById("genCardBtn").addEventListener("click", ()=>{ document.getElementById("cardNumber").value = nextCardNumber(); });
+document.getElementById("scheme").addEventListener("change", e=>{
+  document.getElementById("limit").value = applySchemeDefaults(e.target.value);
+});
+document.getElementById("search").addEventListener("input", render);
+document.getElementById("sortBy").addEventListener("change", render);
+
+document.getElementById("exportBtn").addEventListener("click", exportJSON);
+document.getElementById("importBtn").addEventListener("click", ()=>document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value=""; });
+
+document.getElementById("clearAllBtn").addEventListener("click", ()=>{
+  if(db.length===0){ toast("База уже пуста", true); return; }
+  if(confirm("Удалить ВСЕХ клиентов? Это действие необратимо.")){
+    db = []; save(); render(); clearForm(); toast("База очищена");
+  }
+});
+
+// переключатель формы на мобайле
+document.getElementById("formToggle").addEventListener("click", function(){
+  const body = document.getElementById("formBody");
+  const open = body.classList.toggle("open");
+  this.setAttribute("aria-expanded", open?"true":"false");
+});
+
+// делегирование кнопок в таблице
+document.getElementById("tbody").addEventListener("click", e=>{
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+  const id = btn.getAttribute("data-id");
+  const act = btn.getAttribute("data-act");
+  if(act==="plus") addStamp(id);
+  else if(act==="minus") removeStamp(id);
+  else if(act==="bonus") markBonus(id);
+  else if(act==="edit"){ const c=db.find(x=>x.id===id); if(c) fillForm(c); }
+  else if(act==="history") openHistory(id);
+  else if(act==="del") openDelete(id);
+});
+
+// закрытие модалок
+["closeHistory","closeHistoryBtn"].forEach(id=>document.getElementById(id).addEventListener("click", ()=>document.getElementById("historyModal").classList.remove("show")));
+["closeDelete","cancelDeleteBtn"].forEach(id=>document.getElementById(id).addEventListener("click", ()=>document.getElementById("deleteModal").classList.remove("show")));
+document.getElementById("confirmDeleteBtn").addEventListener("click", confirmDelete);
+document.querySelectorAll(".modal-backdrop").forEach(m=>m.addEventListener("click", e=>{ if(e.target===m) m.classList.remove("show"); }));
+
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape"){ document.querySelectorAll(".modal-backdrop.show").forEach(m=>m.classList.remove("show")); }
+});
+
+// старт
+load();
+clearForm();
+render();
+</script>
+</body>
+</html>

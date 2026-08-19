@@ -186,6 +186,41 @@
   .empty{text-align:center;padding:36px 20px;color:#9a8a74;}
   .footer-note{font-size:.74rem;color:#9a8a74;margin-top:14px;text-align:center;}
 
+  /* ===== Экран входа (защита) ===== */
+  #authOverlay{
+    position:fixed;inset:0;z-index:9999;
+    background:linear-gradient(160deg,var(--brown-dark),var(--brown) 55%,var(--caramel-dark));
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;
+  }
+  #authOverlay.hidden{display:none;}
+  .auth-card{
+    background:var(--soft-white);border-radius:22px;box-shadow:0 18px 60px rgba(0,0,0,.4);
+    width:100%;max-width:380px;padding:30px 26px 26px;text-align:center;
+  }
+  .auth-card .logo{font-size:2.3rem;line-height:1;}
+  .auth-card h2{margin:10px 0 2px;font-size:1.25rem;color:var(--brown-dark);}
+  .auth-card .sub{font-size:.78rem;color:#8a7560;margin-bottom:20px;}
+  .auth-card label{text-align:left;}
+  .auth-card .auth-field{position:relative;}
+  .auth-card .toggle-eye{
+    position:absolute;right:8px;top:50%;transform:translateY(-50%);
+    background:transparent;border:none;font-size:1.15rem;cursor:pointer;color:#9a8a74;
+    min-width:44px;min-height:44px;line-height:1;padding:0;
+  }
+  .auth-card .btn{width:100%;margin-top:18px;}
+  .auth-error{
+    color:var(--red);font-size:.8rem;font-weight:600;min-height:1.2em;
+    margin-top:12px;
+  }
+  .auth-lock{font-size:.74rem;color:#8a7560;margin-top:10px;}
+  .auth-logout{
+    position:fixed;top:10px;right:10px;z-index:60;
+    background:rgba(255,255,255,.16);color:var(--soft-white);border:none;
+    border-radius:10px;padding:8px 12px;font-size:.78rem;cursor:pointer;font-weight:600;
+  }
+  .auth-logout:hover{background:rgba(255,255,255,.28);}
+
   /* ============ ДЕСКТОП ============ */
   @media (min-width:760px){
     body{padding:20px;}
@@ -247,6 +282,29 @@
 </style>
 </head>
 <body>
+
+<!-- ЭКРАН ВХОДА -->
+<div id="authOverlay">
+  <div class="auth-card">
+    <div class="logo">☕</div>
+    <h2>Кофейня — Лояльность</h2>
+    <div class="sub">Вход в защищённую базу клиентов</div>
+    <label>Логин</label>
+    <div class="auth-field">
+      <input type="text" id="authLogin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Логин">
+    </div>
+    <label style="margin-top:10px;">Пароль</label>
+    <div class="auth-field">
+      <input type="password" id="authPass" autocomplete="current-password" placeholder="Пароль">
+      <button type="button" class="toggle-eye" id="authEye" title="Показать пароль">👁</button>
+    </div>
+    <button class="btn" id="authBtn">Войти</button>
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-lock" id="authLock"></div>
+  </div>
+</div>
+
+<button class="auth-logout" id="authLogout" style="display:none;">🔒 Выйти</button>
 
 <header>
   <div class="top">
@@ -768,10 +826,113 @@ document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){ document.querySelectorAll(".modal-backdrop.show").forEach(m=>m.classList.remove("show")); }
 });
 
-// старт
-load();
-clearForm();
-render();
+/* ---------- Защита доступа (вход) ---------- */
+const AUTH = {
+  // SHA-256(логин + ":" + пароль) — пароль в открытом виде НЕ хранится
+  credHash: "054af1342555ebfdafe3df2f6ef0c6aec163f6ba4697fe65f0b3c49304d9788e",
+  sessionKey: "coffeeLoyaltyAuth_v1",
+  failKey: "coffeeLoyaltyFail_v1",
+  maxAttempts: 5,
+  lockMs: 60000
+};
+
+async function sha256(str){
+  const data = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function getFailState(){
+  try{ return JSON.parse(localStorage.getItem(AUTH.failKey)) || {n:0, until:0}; }
+  catch(e){ return {n:0, until:0}; }
+}
+function setFailState(st){ localStorage.setItem(AUTH.failKey, JSON.stringify(st)); }
+
+function showAuthError(msg){ document.getElementById("authError").textContent = msg; }
+function renderLockMsg(){
+  const st = getFailState();
+  const el = document.getElementById("authLock");
+  const now = Date.now();
+  if(st.until > now){
+    const secs = Math.ceil((st.until-now)/1000);
+    el.textContent = "\u26a0 Слишком много попыток. Повторите через "+secs+" с.";
+    return true;
+  }
+  el.textContent = st.n>0 ? ("Осталось попыток: "+(AUTH.maxAttempts-st.n)) : "";
+  return false;
+}
+
+async function tryLogin(){
+  const login = document.getElementById("authLogin").value.trim();
+  const pass = document.getElementById("authPass").value;
+  showAuthError("");
+  const st = getFailState();
+  const now = Date.now();
+  if(st.until > now){ renderLockMsg(); return; }
+  if(!login || !pass){ showAuthError("Введите логин и пароль"); return; }
+  const hash = await sha256(login.toLowerCase() + ":" + pass);
+  if(hash === AUTH.credHash){
+    setFailState({n:0, until:0});
+    sessionStorage.setItem(AUTH.sessionKey, "1");
+    enterApp();
+  }else{
+    st.n = (st.n||0) + 1;
+    if(st.n >= AUTH.maxAttempts){
+      st.until = now + AUTH.lockMs;
+      showAuthError("Неверные данные. Вход заблокирован на 60 секунд.");
+      document.getElementById("authLock").textContent = "\u26a0 Слишком много попыток. Повторите через 60 с.";
+    }else{
+      showAuthError("Неверный логин или пароль");
+    }
+    setFailState(st);
+    renderLockMsg();
+    document.getElementById("authPass").value = "";
+  }
+}
+
+function enterApp(){
+  document.getElementById("authOverlay").classList.add("hidden");
+  document.getElementById("authLogout").style.display = "block";
+  document.getElementById("authLogin").value = "";
+  document.getElementById("authPass").value = "";
+  load();
+  clearForm();
+  render();
+}
+
+function logout(){
+  sessionStorage.removeItem(AUTH.sessionKey);
+  document.getElementById("authLogout").style.display = "none";
+  document.getElementById("authOverlay").classList.remove("hidden");
+  showAuthError("");
+  db = [];
+  document.getElementById("tbody").innerHTML = "";
+  document.getElementById("statClients").textContent = "0";
+  document.getElementById("statReady").textContent = "0";
+  document.getElementById("statStamps").textContent = "0";
+  document.getElementById("authPass").focus();
+  renderLockMsg();
+}
+
+(function initAuth(){
+  if(sessionStorage.getItem(AUTH.sessionKey) === "1"){
+    enterApp();
+  }else{
+    renderLockMsg();
+    setTimeout(()=>document.getElementById("authLogin").focus(), 50);
+  }
+  document.getElementById("authBtn").addEventListener("click", tryLogin);
+  document.getElementById("authPass").addEventListener("keydown", e=>{ if(e.key==="Enter") tryLogin(); });
+  document.getElementById("authLogin").addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("authPass").focus(); });
+  document.getElementById("authEye").addEventListener("click", function(){
+    const p = document.getElementById("authPass");
+    const shown = p.type === "text";
+    p.type = shown ? "password" : "text";
+    this.textContent = shown ? "\u{1F441}" : "\u{1F648}";
+  });
+  document.getElementById("authLogout").addEventListener("click", logout);
+  setInterval(renderLockMsg, 1000);
+})();
 </script>
 </body>
 </html>
